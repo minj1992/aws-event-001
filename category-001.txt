@@ -1,0 +1,115 @@
+Category 1 — IAM & Prerequisites
+
+Step 1 — Create Lambda IAM Role
+
+Navigate:
+
+AWS Console → IAM → Roles → Create role
+
+Screen 1: Select trusted entity
+
+
+
+
+
+Trusted entity type → AWS service
+
+
+
+Service or use case → Lambda
+
+
+
+Click Next
+
+Screen 2: Add permissions — search and select each one:
+
+AmazonDynamoDBFullAccess        ✓ check
+AmazonSESFullAccess             ✓ check
+CloudWatchLogsFullAccess        ✓ check
+CloudTrailReadOnlyAccess        ✓ check
+
+Click Next
+
+Screen 3: Name the role
+
+Role name: aws-weekly-report-lambda-role
+Description: Lambda execution role for AWS weekly resource report POC
+
+Click Create role ✅
+
+Step 2 — Verify SES Sender Email
+
+Navigate:
+
+AWS Console → Amazon SES → Configuration → Identities → Create identity
+
+Fill exactly:
+
+Identity type     : Email address
+Email address     : <your-sender-email@gmail.com>
+
+Click Create identity
+
+Then:
+
+
+
+
+
+Open your email inbox
+
+
+
+Find email from no-reply@ses.amazonaws.com
+
+
+
+Click the verification link ✅
+
+Step 3 — Enable CloudTrail
+
+Navigate:
+
+AWS Console → CloudTrail → Trails → Create trail
+
+Screen 1: General details
+
+Trail name          : aws-resource-poc-trail
+Storage location    : Create new S3 bucket
+S3 bucket name      : aws-resource-poc-trail-logs
+Log file prefix     : cloudtrail-logs/
+
+Screen 2: CloudWatch Logs — enable it
+
+CloudWatch Logs     : Enabled
+Log group name      : /aws/cloudtrail/aws-resource-poc-trail
+IAM role            : Create new role
+IAM role name       : aws-cloudtrail-cw-role
+
+Click Next
+
+Screen 3: Choose log events
+
+Management events   : ✓ Enabled
+API activity        : ✓ Read   ✓ Write
+Data events         : leave off (not needed for POC)
+Insights events     : leave off
+
+Click Next → Review → Create trail ✅
+
+Step 4 — Confirm Your AWS Region
+
+Go to top-right corner of AWS Console. Select and stick to ONE region for all services:
+
+Recommended : ap-south-1  (Mumbai)
+
+Make sure every service you create from here onwards is in ap-south-1 ✅
+
+Once all 4 steps above are done
+
+IAM role created ✅
+SES email verified ✅
+CloudTrail trail active ✅
+Region confirmed ✅
+
