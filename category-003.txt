@@ -1,0 +1,150 @@
+Category 3 — Lambda: Event Processor
+Step 1 — Create Lambda Function
+Navigate:
+AWS Console → Lambda → Functions → Create function
+Fill exactly:
+Option              : Author from scratch
+Function name       : aws-resource-event-processor
+Runtime             : Python 3.12
+Architecture        : x86_64
+Permissions section — expand it:
+Execution role      : Use an existing role
+Existing role       : aws-weekly-report-lambda-role
+Click Create function ✅
+
+Step 2 — Add Environment Variables
+Navigate:
+Lambda → aws-resource-event-processor → Configuration → Environment variables → Edit
+Click Add environment variable — add these 2:
+Key                         Value
+--------------------------  --------------------------------
+DYNAMODB_TABLE              aws-resource-events
+REGION                      us-east-2
+Click Save ✅
+
+Step 3 — Add the Lambda Code
+Navigate:
+Lambda → aws-resource-event-processor → Code → lambda_function.py
+Delete existing code completely. Paste this exactly:
+pythonimport boto3
+import json
+import os
+import uuid
+import time
+from datetime import datetime
+
+dynamodb = boto3.resource('dynamodb', region_name=os.environ['REGION'])
+table = dynamodb.Table(os.environ['DYNAMODB_TABLE'])
+
+TRACKED_EVENTS = {
+    'RunInstances'        : ('EC2',    'Created'),
+    'TerminateInstances'  : ('EC2',    'Deleted'),
+    'CreateBucket'        : ('S3',     'Created'),
+    'DeleteBucket'        : ('S3',     'Deleted'),
+    'CreateDBInstance'    : ('RDS',    'Created'),
+    'DeleteDBInstance'    : ('RDS',    'Deleted'),
+    'CreateFunction20150331' : ('Lambda', 'Created'),
+    'DeleteFunction'      : ('Lambda', 'Deleted'),
+    'CreateUser'          : ('IAM',    'Created'),
+    'DeleteUser'          : ('IAM',    'Deleted'),
+    'CreateVpc'           : ('VPC',    'Created'),
+    'DeleteVpc'           : ('VPC',    'Deleted'),
+}
+
+def lambda_handler(event, context):
+    try:
+        detail     = event.get('detail', {})
+        event_name = detail.get('eventName', '')
+
+        if event_name not in TRACKED_EVENTS:
+            print(f"Skipping untracked event: {event_name}")
+            return {'statusCode': 200, 'body': 'Event not tracked'}
+
+        resource_type, action = TRACKED_EVENTS[event_name]
+
+        user_identity = detail.get('userIdentity', {})
+        user_role     = user_identity.get('arn', 
+                        user_identity.get('userName', 'Unknown'))
+
+        resource_name = extract_resource_name(detail, resource_type)
+
+        ttl_value = int(time.time()) + (30 * 24 * 60 * 60)
+
+        item = {
+            'resourceType' : resource_type,
+            'eventId'      : str(uuid.uuid4()),
+            'resourceName' : resource_name,
+            'action'       : action,
+            'eventName'    : event_name,
+            'timestamp'    : detail.get('eventTime', 
+                             datetime.utcnow().isoformat()),
+            'region'       : detail.get('awsRegion', 'us-east-2'),
+            'userRole'     : user_role,
+            'ttl'          : ttl_value
+        }
+
+        table.put_item(Item=item)
+        print(f"Saved event: {json.dumps(item)}")
+
+        return {'statusCode': 200, 'body': 'Event saved successfully'}
+
+    except Exception as e:
+        print(f"ERROR: {str(e)}")
+        raise e
+
+def extract_resource_name(detail, resource_type):
+    req = detail.get('requestParameters', {}) or {}
+    res = detail.get('responseElements', {})  or {}
+
+    if resource_type == 'EC2':
+        instances = res.get('instancesSet', {}).get('items', [])
+        if instances:
+            return instances[0].get('instanceId', 'Unknown')
+
+    elif resource_type == 'S3':
+        return req.get('bucketName', 'Unknown')
+
+    elif resource_type == 'RDS':
+        return req.get('dBInstanceIdentifier', 'Unknown')
+
+    elif resource_type == 'Lambda':
+        return req.get('functionName', 'Unknown')
+
+    elif resource_type == 'IAM':
+        return req.get('userName', 'Unknown')
+
+    elif resource_type == 'VPC':
+        return res.get('vpc', {}).get('vpcId', 'Unknown')
+
+    return 'Unknown'
+Click Deploy ✅
+
+Step 4 — Test the Lambda Function
+Navigate:
+Lambda → aws-resource-event-processor → Test → Create new test event
+Fill:
+Test event name     : test-s3-create-event
+Paste this as test JSON:
+json{
+  "detail": {
+    "eventName": "CreateBucket",
+    "eventTime": "2026-05-15T10:00:00Z",
+    "awsRegion": "us-east-2",
+    "requestParameters": {
+      "bucketName": "poc-test-bucket-12345"
+    },
+    "userIdentity": {
+      "arn": "arn:aws:iam::939139585895:user/vishnu"
+    }
+  }
+}
+Click Test
+Expected result:
+Status              : Succeeded
+Function logs       : Saved event: {...}
+Then go to:
+DynamoDB → Tables → aws-resource-events → Explore table items
+You should see 1 item with:
+resourceType  : S3
+action        : Created
+resourceName  : poc-test-bucket-12345
