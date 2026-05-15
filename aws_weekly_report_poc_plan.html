@@ -1,0 +1,357 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.cat{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);margin-bottom:1rem;overflow:hidden}
+.cat-header{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none;background:var(--color-background-secondary)}
+.cat-header:hover{background:var(--color-background-tertiary)}
+.badge{font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;margin-left:auto}
+.badge-blue{background:#E6F1FB;color:#0C447C}
+.badge-amber{background:#FAEEDA;color:#633806}
+.badge-teal{background:#E1F5EE;color:#085041}
+.badge-coral{background:#FAECE7;color:#712B13}
+.badge-purple{background:#EEEDFE;color:#3C3489}
+.badge-green{background:#EAF3DE;color:#27500A}
+.steps{padding:8px 16px 12px}
+.step{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.step:last-child{border-bottom:none}
+.step input[type=checkbox]{width:16px;height:16px;margin-top:2px;flex-shrink:0;cursor:pointer;accent-color:#1D9E75}
+.step-body{flex:1}
+.step-title{font-size:13px;font-weight:500;color:var(--color-text-primary);line-height:1.4}
+.step-title.done{text-decoration:line-through;color:var(--color-text-tertiary)}
+.step-detail{font-size:12px;color:var(--color-text-secondary);margin-top:3px;line-height:1.5}
+.step-meta{display:flex;gap:8px;margin-top:4px;flex-wrap:wrap}
+.tag{font-size:11px;padding:1px 7px;border-radius:20px;border:0.5px solid var(--color-border-secondary);color:var(--color-text-secondary)}
+.tag-console{background:#E6F1FB;border-color:#B5D4F4;color:#185FA5}
+.tag-name{background:#EEEDFE;border-color:#CECBF6;color:#534AB7}
+.time-tag{font-size:11px;padding:1px 7px;border-radius:20px;background:var(--color-background-info);color:var(--color-text-info);border:none}
+.progress-bar{height:4px;background:var(--color-border-tertiary);border-radius:2px;margin:0 16px 12px}
+.progress-fill{height:4px;background:#1D9E75;border-radius:2px;transition:width 0.3s}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.2rem}
+.metric{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px;text-align:center}
+.metric-num{font-size:22px;font-weight:500;color:var(--color-text-primary)}
+.metric-label{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+.cat-icon{font-size:16px;color:var(--color-text-secondary)}
+.chevron{font-size:14px;color:var(--color-text-tertiary);transition:transform 0.2s;margin-left:4px}
+.chevron.open{transform:rotate(180deg)}
+</style>
+
+<div class="summary" id="summary">
+  <div class="metric"><div class="metric-num" id="total-steps">20</div><div class="metric-label">Total steps</div></div>
+  <div class="metric"><div class="metric-num" id="done-count">0</div><div class="metric-label">Completed</div></div>
+  <div class="metric"><div class="metric-num" id="est-time">~4 hrs</div><div class="metric-label">Est. total time</div></div>
+</div>
+
+<div class="cat" id="cat-0">
+  <div class="cat-header" onclick="toggle(0)">
+    <i class="ti ti-shield-lock cat-icon" aria-hidden="true"></i>
+    <span style="font-size:14px;font-weight:500;color:var(--color-text-primary)">Category 1 — IAM & prerequisites</span>
+    <span class="badge badge-amber">~30 min</span>
+    <i class="ti ti-chevron-down chevron open" id="chev-0"></i>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="prog-0" style="width:0%"></div></div>
+  <div class="steps" id="steps-0">
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Create Lambda execution IAM role</div>
+        <div class="step-detail">IAM → Roles → Create role → AWS service → Lambda. Attach policies: AmazonDynamoDBFullAccess, AmazonSESFullAccess, CloudWatchLogsFullAccess, CloudTrailReadOnlyAccess</div>
+        <div class="step-meta"><span class="tag tag-console">AWS Console → IAM</span><span class="tag tag-name">Name: aws-weekly-report-lambda-role</span><span class="time-tag">10 min</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Verify SES sender email identity</div>
+        <div class="step-detail">SES → Identities → Create identity → Email address. Enter your sender email. Check inbox and click verification link.</div>
+        <div class="step-meta"><span class="tag tag-console">AWS Console → SES</span><span class="tag tag-name">e.g. reports@yourcompany.com</span><span class="time-tag">5 min</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Enable CloudTrail (if not already active)</div>
+        <div class="step-detail">CloudTrail → Trails → Create trail. Enable for all regions. Send events to CloudWatch Logs. Enable management events (Read + Write).</div>
+        <div class="step-meta"><span class="tag tag-console">AWS Console → CloudTrail</span><span class="tag tag-name">Name: aws-resource-trail</span><span class="time-tag">10 min</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Note your AWS region</div>
+        <div class="step-detail">All services (Lambda, DynamoDB, EventBridge, SES) must be in the same region. Pick one: ap-south-1 (Mumbai) recommended for India accounts.</div>
+        <div class="step-meta"><span class="tag">Consistency check</span><span class="time-tag">2 min</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="cat" id="cat-1">
+  <div class="cat-header" onclick="toggle(1)">
+    <i class="ti ti-database cat-icon" aria-hidden="true"></i>
+    <span style="font-size:14px;font-weight:500;color:var(--color-text-primary)">Category 2 — DynamoDB table setup</span>
+    <span class="badge badge-blue">~15 min</span>
+    <i class="ti ti-chevron-down chevron open" id="chev-1"></i>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="prog-1" style="width:0%"></div></div>
+  <div class="steps" id="steps-1">
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Create DynamoDB table</div>
+        <div class="step-detail">DynamoDB → Tables → Create table. Partition key: resourceType (String). Sort key: eventId (String). Billing: On-demand (PAY_PER_REQUEST).</div>
+        <div class="step-meta"><span class="tag tag-console">AWS Console → DynamoDB</span><span class="tag tag-name">Table: aws-resource-events</span><span class="time-tag">8 min</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Add TTL attribute for auto-cleanup</div>
+        <div class="step-detail">Table → Additional settings → TTL → Enable. Attribute name: ttl. Items will auto-delete after 30 days keeping costs low.</div>
+        <div class="step-meta"><span class="tag tag-console">DynamoDB → Table settings</span><span class="tag tag-name">Attribute: ttl</span><span class="time-tag">3 min</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Note the table ARN</div>
+        <div class="step-detail">Table → Overview → Copy ARN. You will need this for Lambda environment variables.</div>
+        <div class="step-meta"><span class="tag">Copy ARN value</span><span class="time-tag">1 min</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="cat" id="cat-2">
+  <div class="cat-header" onclick="toggle(2)">
+    <i class="ti ti-bolt cat-icon" aria-hidden="true"></i>
+    <span style="font-size:14px;font-weight:500;color:var(--color-text-primary)">Category 3 — Lambda: event processor</span>
+    <span class="badge badge-coral">~45 min</span>
+    <i class="ti ti-chevron-down chevron open" id="chev-2"></i>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="prog-2" style="width:0%"></div></div>
+  <div class="steps" id="steps-2">
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Create Lambda function (event processor)</div>
+        <div class="step-detail">Lambda → Create function → Author from scratch. Runtime: Python 3.12. Execution role: use existing → aws-weekly-report-lambda-role.</div>
+        <div class="step-meta"><span class="tag tag-console">AWS Console → Lambda</span><span class="tag tag-name">Name: aws-resource-event-processor</span><span class="time-tag">5 min</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Add environment variables</div>
+        <div class="step-detail">Configuration → Environment variables → Add: DYNAMODB_TABLE = aws-resource-events, AWS_REGION_NAME = ap-south-1</div>
+        <div class="step-meta"><span class="tag">Lambda → Configuration</span><span class="time-tag">3 min</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Paste event processor code & deploy</div>
+        <div class="step-detail">Code tab → paste the Python handler that parses EventBridge event → extracts resourceName, resourceType, action, timestamp, region, userIdentity → writes to DynamoDB with TTL = now + 30 days. Click Deploy.</div>
+        <div class="step-meta"><span class="tag">Lambda → Code</span><span class="time-tag">15 min</span><button style="font-size:11px;padding:2px 8px;margin-left:4px" onclick="sendPrompt('Give me the complete Python Lambda code for the event processor function that writes CloudTrail events to DynamoDB')">Get code ↗</button></div>
+      </div>
+    </div>
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Test with sample event</div>
+        <div class="step-detail">Test tab → Create test event → use EventBridge CloudTrail format with eventName: RunInstances. Verify item appears in DynamoDB table.</div>
+        <div class="step-meta"><span class="tag">Lambda → Test</span><span class="time-tag">10 min</span><button style="font-size:11px;padding:2px 8px;margin-left:4px" onclick="sendPrompt('Give me a sample EventBridge test event JSON for Lambda to simulate EC2 creation via CloudTrail')">Get test JSON ↗</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="cat" id="cat-3">
+  <div class="cat-header" onclick="toggle(3)">
+    <i class="ti ti-route cat-icon" aria-hidden="true"></i>
+    <span style="font-size:14px;font-weight:500;color:var(--color-text-primary)">Category 4 — EventBridge rule (real-time events)</span>
+    <span class="badge badge-amber">~20 min</span>
+    <i class="ti ti-chevron-down chevron open" id="chev-3"></i>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="prog-3" style="width:0%"></div></div>
+  <div class="steps" id="steps-3">
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Create EventBridge rule for resource events</div>
+        <div class="step-detail">EventBridge → Rules → Create rule. Event bus: default. Rule type: Rule with event pattern.</div>
+        <div class="step-meta"><span class="tag tag-console">AWS Console → EventBridge</span><span class="tag tag-name">Name: aws-resource-create-delete-rule</span><span class="time-tag">5 min</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Set event pattern (CloudTrail source)</div>
+        <div class="step-detail">Event source: AWS events. Event pattern: source = aws.ec2 (add aws.s3, aws.rds, aws.lambda, aws.iam). detail-type = AWS API Call via CloudTrail. detail.eventName = [RunInstances, TerminateInstances, CreateBucket, DeleteBucket, CreateDBInstance, DeleteDBInstance, CreateFunction, DeleteFunction]</div>
+        <div class="step-meta"><span class="tag">Event pattern JSON</span><span class="time-tag">8 min</span><button style="font-size:11px;padding:2px 8px;margin-left:4px" onclick="sendPrompt('Give me the complete EventBridge event pattern JSON to capture EC2, S3, RDS, Lambda, IAM creation and deletion events via CloudTrail')">Get pattern ↗</button></div>
+      </div>
+    </div>
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Set target to event processor Lambda</div>
+        <div class="step-detail">Target → Lambda function → select aws-resource-event-processor. Leave input as-is (full event passed). Save rule.</div>
+        <div class="step-meta"><span class="tag">EventBridge → Target</span><span class="time-tag">3 min</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="cat" id="cat-4">
+  <div class="cat-header" onclick="toggle(4)">
+    <i class="ti ti-mail cat-icon" aria-hidden="true"></i>
+    <span style="font-size:14px;font-weight:500;color:var(--color-text-primary)">Category 5 — Lambda: weekly report sender</span>
+    <span class="badge badge-coral">~45 min</span>
+    <i class="ti ti-chevron-down chevron open" id="chev-4"></i>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="prog-4" style="width:0%"></div></div>
+  <div class="steps" id="steps-4">
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Create Lambda function (report sender)</div>
+        <div class="step-detail">Lambda → Create function → Author from scratch. Runtime: Python 3.12. Execution role: aws-weekly-report-lambda-role.</div>
+        <div class="step-meta"><span class="tag tag-console">AWS Console → Lambda</span><span class="tag tag-name">Name: aws-weekly-report-sender</span><span class="time-tag">5 min</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Add environment variables</div>
+        <div class="step-detail">DYNAMODB_TABLE = aws-resource-events, SES_SENDER = reports@yourcompany.com, SES_RECIPIENTS = team@yourcompany.com, AWS_REGION_NAME = ap-south-1</div>
+        <div class="step-meta"><span class="tag">Lambda → Configuration</span><span class="time-tag">3 min</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Paste report sender code & deploy</div>
+        <div class="step-detail">Python handler: query DynamoDB for events from past 7 days → group by resourceType → build HTML email table with columns: Resource Name, Type, Action, Timestamp, Region, User/Role → send via SES. Click Deploy.</div>
+        <div class="step-meta"><span class="tag">Lambda → Code</span><span class="time-tag">15 min</span><button style="font-size:11px;padding:2px 8px;margin-left:4px" onclick="sendPrompt('Give me the complete Python Lambda code for the weekly report sender that queries DynamoDB and sends a formatted HTML email via SES')">Get code ↗</button></div>
+      </div>
+    </div>
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Test report Lambda manually</div>
+        <div class="step-detail">Test tab → empty JSON event {} → invoke. Check your email inbox for the HTML report. Verify all columns are present.</div>
+        <div class="step-meta"><span class="tag">Lambda → Test</span><span class="time-tag">10 min</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="cat" id="cat-5">
+  <div class="cat-header" onclick="toggle(5)">
+    <i class="ti ti-clock cat-icon" aria-hidden="true"></i>
+    <span style="font-size:14px;font-weight:500;color:var(--color-text-primary)">Category 6 — EventBridge scheduler (Monday cron)</span>
+    <span class="badge badge-teal">~15 min</span>
+    <i class="ti ti-chevron-down chevron open" id="chev-5"></i>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="prog-5" style="width:0%"></div></div>
+  <div class="steps" id="steps-5">
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Create EventBridge schedule</div>
+        <div class="step-detail">EventBridge → Schedules → Create schedule. Schedule type: Recurring → Cron-based. Cron: 0 2 ? * MON * (2 AM UTC = 7:30 AM IST every Monday).</div>
+        <div class="step-meta"><span class="tag tag-console">AWS Console → EventBridge → Schedules</span><span class="tag tag-name">Name: aws-weekly-report-schedule</span><span class="time-tag">8 min</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Set target to report sender Lambda</div>
+        <div class="step-detail">Target → Templated targets → Lambda → select aws-weekly-report-sender. Payload: {}. Create schedule.</div>
+        <div class="step-meta"><span class="tag">EventBridge → Target</span><span class="time-tag">3 min</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="cat" id="cat-6">
+  <div class="cat-header" onclick="toggle(6)">
+    <i class="ti ti-checkup-list cat-icon" aria-hidden="true"></i>
+    <span style="font-size:14px;font-weight:500;color:var(--color-text-primary)">Category 7 — End-to-end POC validation</span>
+    <span class="badge badge-green">~20 min</span>
+    <i class="ti ti-chevron-down chevron open" id="chev-6"></i>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="prog-6" style="width:0%"></div></div>
+  <div class="steps" id="steps-6">
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Trigger a real event: create an S3 bucket</div>
+        <div class="step-detail">S3 → Create bucket (name: poc-test-bucket-12345). Wait 1-2 min. Check DynamoDB table for a new item with resourceType = S3 and action = CreateBucket.</div>
+        <div class="step-meta"><span class="tag tag-console">AWS Console → S3</span><span class="time-tag">5 min</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Delete the test S3 bucket</div>
+        <div class="step-detail">S3 → Delete poc-test-bucket-12345. Confirm a DeleteBucket item appears in DynamoDB. Both create and delete events must be present.</div>
+        <div class="step-meta"><span class="tag tag-console">AWS Console → S3</span><span class="time-tag">3 min</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Manually invoke report sender & check email</div>
+        <div class="step-detail">Lambda → aws-weekly-report-sender → Test → invoke. Email should arrive within 1 min showing the S3 create & delete events in a formatted HTML table.</div>
+        <div class="step-meta"><span class="tag">Lambda → Test</span><span class="time-tag">5 min</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">Check CloudWatch logs for errors</div>
+        <div class="step-detail">CloudWatch → Log groups → /aws/lambda/aws-resource-event-processor and /aws/lambda/aws-weekly-report-sender. Confirm no errors in latest log streams.</div>
+        <div class="step-meta"><span class="tag tag-console">AWS Console → CloudWatch</span><span class="time-tag">5 min</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <input type="checkbox" onchange="update()">
+      <div class="step-body">
+        <div class="step-title">POC sign-off: share screenshot with manager</div>
+        <div class="step-detail">Screenshot: DynamoDB table with real events + received email report. Attach to Jira ticket DEV-8 and comment: POC validated, ready for Terraform templatization.</div>
+        <div class="step-meta"><span class="tag">Jira DEV-8</span><span class="time-tag">2 min</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const cats = 7;
+function toggle(i) {
+  const s = document.getElementById('steps-'+i);
+  const c = document.getElementById('chev-'+i);
+  const open = s.style.display !== 'none';
+  s.style.display = open ? 'none' : '';
+  s.previousElementSibling.style.display = open ? 'none' : '';
+  c.classList.toggle('open', !open);
+}
+function update() {
+  let total = 0, done = 0;
+  for (let i = 0; i < cats; i++) {
+    const boxes = document.querySelectorAll('#steps-'+i+' input[type=checkbox]');
+    const checked = document.querySelectorAll('#steps-'+i+' input[type=checkbox]:checked');
+    boxes.forEach((cb,idx)=>{
+      const title = cb.closest('.step').querySelector('.step-title');
+      title.classList.toggle('done', cb.checked);
+    });
+    const pct = boxes.length ? Math.round(checked.length/boxes.length*100) : 0;
+    document.getElementById('prog-'+i).style.width = pct+'%';
+    total += boxes.length;
+    done += checked.length;
+  }
+  document.getElementById('total-steps').textContent = total;
+  document.getElementById('done-count').textContent = done;
+}
+update();
+</script>
