@@ -1,0 +1,84 @@
+CloudTrail is created perfectly! I can see:
+
+```
+Trail name  : aws-resource-poc-trail    ✅
+Region      : US East (Ohio)            ✅
+Multi-region: Yes                       ✅
+S3 bucket   : aws-resource-poc-trail-logs-us-east-2  ✅
+CW Log group: /aws/cloudtrail/aws-resource-poc-trail ✅
+```
+
+---
+
+Now tell me quickly before we move to Category 2:
+
+- IAM role `aws-weekly-report-lambda-role` — done ✅ or pending?
+- SES email verification — done ✅ or pending?
+
+---
+
+# Category 2 — DynamoDB Table Setup
+
+## Step 1 — Create DynamoDB Table
+
+**Navigate:**
+```
+AWS Console → DynamoDB → Tables → Create table
+```
+
+**Fill exactly:**
+```
+Table name          : aws-resource-events
+Partition key       : resourceType        (type: String)
+Sort key            : eventId             (type: String)
+```
+
+**Table settings:**
+```
+Table settings      : Customize settings
+Table class         : DynamoDB Standard
+Read/Write capacity : On-demand
+```
+
+Everything else — leave default.
+
+Click `Create table` ✅
+
+---
+
+## Step 2 — Enable TTL on the table
+
+Wait for table status to show `Active`, then:
+
+**Navigate:**
+```
+DynamoDB → Tables → aws-resource-events → Additional settings → Time to Live (TTL)
+```
+
+Click `Enable TTL`
+
+```
+TTL attribute name  : ttl
+```
+
+Click `Enable TTL` ✅
+
+---
+
+## Step 3 — Copy the Table ARN
+
+```
+DynamoDB → Tables → aws-resource-events → Overview → General information
+```
+
+Find `Amazon Resource Name (ARN)` — copy and save it somewhere:
+
+```
+arn:aws:dynamodb:us-east-2:<your-account-id>:table/aws-resource-events
+```
+
+You will need this in Lambda setup ✅
+
+---
+
+Once table shows `Active` status, reply with a screenshot and I'll move you to **Category 3 — Lambda Event Processor**.
