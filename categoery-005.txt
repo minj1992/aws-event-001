@@ -1,0 +1,298 @@
+The full real-time pipeline is working perfectly! I can see:
+
+```
+Items returned  : 2                              ✅
+Item 1 (real)   : poc-live-test-b...  Created   ✅  ← triggered by real S3 bucket
+Item 2 (test)   : poc-test-buck...    Created   ✅  ← triggered by Lambda test
+userRole        : arn:aws:iam::939139585895      ✅
+region          : us-east-2                      ✅
+```
+
+EventBridge → Lambda → DynamoDB pipeline is fully working! Let's move to the email report.
+
+---
+
+# Category 5 — Lambda: Weekly Report Sender
+
+## Step 1 — Create Lambda Function
+
+**Navigate:**
+```
+AWS Console → Lambda → Functions → Create function
+```
+
+**Fill exactly:**
+```
+Option          : Author from scratch
+Function name   : aws-weekly-report-sender
+Runtime         : Python 3.12
+Architecture    : x86_64
+```
+
+**Permissions — expand it:**
+```
+Execution role  : Use an existing role
+Existing role   : aws-weekly-report-lambda-role
+```
+
+Click `Create function` ✅
+
+---
+
+## Step 2 — Add Environment Variables
+
+**Navigate:**
+```
+Lambda → aws-weekly-report-sender → Configuration → Environment variables → Edit
+```
+
+Add these exactly — 4 variables:
+
+```
+Key                   Value
+--------------------  ---------------------------------
+DYNAMODB_TABLE        aws-resource-events
+REGION                us-east-2
+SES_SENDER            minj1992@gmail.com
+SES_RECIPIENTS        minj1992@gmail.com
+```
+
+Click `Save` ✅
+
+---
+
+## Step 3 — Increase Lambda Timeout
+
+**Navigate:**
+```
+Lambda → aws-weekly-report-sender → Configuration → General configuration → Edit
+```
+
+```
+Timeout         : 1 min 0 sec
+Memory          : 256 MB
+```
+
+Click `Save` ✅
+
+---
+
+## Step 4 — Add the Lambda Code
+
+**Navigate:**
+```
+Lambda → aws-weekly-report-sender → Code → lambda_function.py
+```
+
+Delete all existing code. Paste this exactly:
+
+```python
+import boto3
+import os
+import json
+from datetime import datetime, timedelta
+from boto3.dynamodb.conditions import Attr
+
+dynamodb = boto3.resource('dynamodb', region_name=os.environ['REGION'])
+ses      = boto3.client('ses',        region_name=os.environ['REGION'])
+table    = dynamodb.Table(os.environ['DYNAMODB_TABLE'])
+
+SENDER      = os.environ['SES_SENDER']
+RECIPIENTS  = os.environ['SES_RECIPIENTS'].split(',')
+
+def lambda_handler(event, context):
+    try:
+        now       = datetime.utcnow()
+        week_ago  = now - timedelta(days=7)
+        week_ago_iso = week_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        print(f"Fetching events from {week_ago_iso} to {now.isoformat()}")
+
+        response = table.scan(
+            FilterExpression=Attr('timestamp').gte(week_ago_iso)
+        )
+        items = response.get('Items', [])
+
+        while 'LastEvaluatedKey' in response:
+            response = table.scan(
+                FilterExpression=Attr('timestamp').gte(week_ago_iso),
+                ExclusiveStartKey=response['LastEvaluatedKey']
+            )
+            items.extend(response.get('Items', []))
+
+        print(f"Total events found: {len(items)}")
+
+        items.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+
+        html_body  = build_html_report(items, week_ago, now)
+        text_body  = build_text_report(items)
+
+        start_date = week_ago.strftime('%Y-%m-%d')
+        end_date   = now.strftime('%Y-%m-%d')
+        subject    = f"AWS Weekly Resource Report | {start_date} to {end_date}"
+
+        ses.send_email(
+            Source=SENDER,
+            Destination={'ToAddresses': RECIPIENTS},
+            Message={
+                'Subject': {'Data': subject, 'Charset': 'UTF-8'},
+                'Body': {
+                    'Html': {'Data': html_body,  'Charset': 'UTF-8'},
+                    'Text': {'Data': text_body,  'Charset': 'UTF-8'}
+                }
+            }
+        )
+
+        print(f"Email sent to: {RECIPIENTS}")
+        return {
+            'statusCode': 200,
+            'body': f"Report sent. Total events: {len(items)}"
+        }
+
+    except Exception as e:
+        print(f"ERROR: {str(e)}")
+        raise e
+
+
+def build_html_report(items, week_ago, now):
+    start_str = week_ago.strftime('%d %b %Y')
+    end_str   = now.strftime('%d %b %Y')
+
+    created_count = sum(1 for i in items if i.get('action') == 'Created')
+    deleted_count = sum(1 for i in items if i.get('action') == 'Deleted')
+
+    rows = ''
+    for item in items:
+        action     = item.get('action', '-')
+        badge_color = '#1D9E75' if action == 'Created' else '#E24B4A'
+        rows += f"""
+        <tr>
+          <td>{item.get('resourceName',  '-')}</td>
+          <td>{item.get('resourceType',  '-')}</td>
+          <td><span style="background:{badge_color};color:#fff;
+              padding:2px 10px;border-radius:12px;font-size:12px;">
+              {action}</span></td>
+          <td>{item.get('timestamp',     '-')}</td>
+          <td>{item.get('region',        '-')}</td>
+          <td style="font-size:11px;">{item.get('userRole', '-')}</td>
+        </tr>"""
+
+    if not items:
+        rows = '<tr><td colspan="6" style="text-align:center;color:#888;">No events found this week</td></tr>'
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"></head>
+    <body style="font-family:Arial,sans-serif;margin:0;padding:20px;background:#f5f5f5;">
+      <div style="max-width:900px;margin:0 auto;background:#fff;
+                  border-radius:8px;overflow:hidden;border:1px solid #e0e0e0;">
+
+        <div style="background:#232F3E;padding:24px 32px;">
+          <h1 style="color:#FF9900;margin:0;font-size:22px;">
+            AWS Weekly Resource Report
+          </h1>
+          <p style="color:#aaa;margin:6px 0 0;font-size:14px;">
+            {start_str} &rarr; {end_str} &nbsp;|&nbsp; Account: 939139585895
+          </p>
+        </div>
+
+        <div style="display:flex;gap:16px;padding:24px 32px;background:#fafafa;
+                    border-bottom:1px solid #e0e0e0;">
+          <div style="flex:1;background:#fff;border:1px solid #e0e0e0;
+                      border-radius:8px;padding:16px;text-align:center;">
+            <div style="font-size:28px;font-weight:700;color:#232F3E;">
+              {len(items)}</div>
+            <div style="font-size:13px;color:#888;margin-top:4px;">
+              Total Events</div>
+          </div>
+          <div style="flex:1;background:#fff;border:1px solid #e0e0e0;
+                      border-radius:8px;padding:16px;text-align:center;">
+            <div style="font-size:28px;font-weight:700;color:#1D9E75;">
+              {created_count}</div>
+            <div style="font-size:13px;color:#888;margin-top:4px;">
+              Resources Created</div>
+          </div>
+          <div style="flex:1;background:#fff;border:1px solid #e0e0e0;
+                      border-radius:8px;padding:16px;text-align:center;">
+            <div style="font-size:28px;font-weight:700;color:#E24B4A;">
+              {deleted_count}</div>
+            <div style="font-size:13px;color:#888;margin-top:4px;">
+              Resources Deleted</div>
+          </div>
+        </div>
+
+        <div style="padding:24px 32px;">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr style="background:#232F3E;color:#fff;">
+                <th style="padding:10px 12px;text-align:left;">Resource Name</th>
+                <th style="padding:10px 12px;text-align:left;">Type</th>
+                <th style="padding:10px 12px;text-align:left;">Action</th>
+                <th style="padding:10px 12px;text-align:left;">Timestamp</th>
+                <th style="padding:10px 12px;text-align:left;">Region</th>
+                <th style="padding:10px 12px;text-align:left;">User / Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="padding:16px 32px;background:#fafafa;
+                    border-top:1px solid #e0e0e0;text-align:center;
+                    font-size:12px;color:#aaa;">
+          Auto-generated by aws-weekly-report-sender Lambda &nbsp;|&nbsp;
+          Do not reply to this email
+        </div>
+      </div>
+    </body>
+    </html>"""
+
+
+def build_text_report(items):
+    lines = ['AWS Weekly Resource Report', '=' * 40]
+    for item in items:
+        lines.append(
+            f"{item.get('action','-')} | "
+            f"{item.get('resourceType','-')} | "
+            f"{item.get('resourceName','-')} | "
+            f"{item.get('timestamp','-')} | "
+            f"{item.get('region','-')} | "
+            f"{item.get('userRole','-')}"
+        )
+    if not items:
+        lines.append('No events found this week.')
+    return '\n'.join(lines)
+```
+
+Click `Deploy` ✅
+
+---
+
+## Step 5 — Test the Report Sender
+
+**Navigate:**
+```
+Lambda → aws-weekly-report-sender → Test
+```
+
+```
+Test event name : test-send-weekly-report
+Event JSON      : {}
+```
+
+Click `Test`
+
+**Expected result:**
+```
+Status          : Succeeded
+Body            : Report sent. Total events: 2
+```
+
+Then check your inbox at `minj1992@gmail.com` — you should receive a formatted HTML email showing both S3 events ✅
+
+---
+
+Share a screenshot of the test result + email received and I'll move you to **Category 6 — EventBridge Monday Scheduler**.
