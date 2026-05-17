@@ -1,0 +1,151 @@
+Category 3 is working perfectly! I can see:
+
+```
+Table         : aws-resource-events     ✅
+resourceType  : S3                      ✅
+action        : Created                 ✅
+eventName     : CreateBucket            ✅
+resourceName  : poc-test-bucket-12345   ✅
+region        : us-east-2               ✅
+userRole      : arn:aws:iam::939139585895:user/vishnu  ✅
+ttl           : 1781427853              ✅
+```
+
+Lambda is writing to DynamoDB correctly. Let's move on.
+
+---
+
+# Category 4 — EventBridge Rule (Real-time Events)
+
+## Step 1 — Create EventBridge Rule
+
+**Navigate:**
+```
+AWS Console → Amazon EventBridge → Rules → Create rule
+```
+
+**Fill exactly:**
+```
+Name            : aws-resource-create-delete-rule
+Description     : Captures CloudTrail create and delete events for AWS resources
+Event bus       : default
+Rule type       : Rule with an event pattern
+```
+
+Click `Next`
+
+---
+
+## Step 2 — Set Event Pattern
+
+On the `Build event pattern` screen:
+
+```
+Event source          : AWS events or EventBridge partner events
+Sample event          : AWS events
+```
+
+Scroll down to `Event pattern` section:
+
+- Click `Custom patterns (JSON editor)`
+- Delete whatever is there
+- Paste this exactly:
+
+```json
+{
+  "source": [
+    "aws.ec2",
+    "aws.s3",
+    "aws.rds",
+    "aws.lambda",
+    "aws.iam",
+    "aws.ec2"
+  ],
+  "detail-type": [
+    "AWS API Call via CloudTrail"
+  ],
+  "detail": {
+    "eventName": [
+      "RunInstances",
+      "TerminateInstances",
+      "CreateBucket",
+      "DeleteBucket",
+      "CreateDBInstance",
+      "DeleteDBInstance",
+      "CreateFunction20150331",
+      "DeleteFunction",
+      "CreateUser",
+      "DeleteUser",
+      "CreateVpc",
+      "DeleteVpc"
+    ]
+  }
+}
+```
+
+Click `Next`
+
+---
+
+## Step 3 — Set Target
+
+```
+Target type     : AWS service
+Select a target : Lambda function
+Function        : aws-resource-event-processor
+```
+
+Leave everything else default.
+
+Click `Next` → `Next` → `Create rule` ✅
+
+---
+
+## Step 4 — Verify Rule is Enabled
+
+```
+EventBridge → Rules → aws-resource-create-delete-rule
+```
+
+Status should show:
+```
+Status : Enabled  ✅
+```
+
+---
+
+## Step 5 — Live Test (Real AWS Event)
+
+Now let's trigger a real event to confirm the full pipeline works:
+
+**Navigate:**
+```
+AWS Console → S3 → Create bucket
+```
+
+**Fill:**
+```
+Bucket name     : poc-live-test-bucket-us-east-2
+Region          : us-east-2
+```
+
+Leave everything default → Click `Create bucket`
+
+Wait 1-2 minutes, then check:
+
+```
+DynamoDB → Tables → aws-resource-events → Explore table items → Run
+```
+
+You should now see **2 items** — the test one from before + this new real one:
+```
+resourceName  : poc-live-test-bucket-us-east-2
+action        : Created
+eventName     : CreateBucket
+```
+
+✅ If you see it — the full real-time pipeline is working!
+
+---
+
+Take a screenshot of the EventBridge rule + DynamoDB with the new item and I'll move you to **Category 5 — Lambda Report Sender**.
