@@ -1,0 +1,159 @@
+Category 5 is working perfectly!
+
+```
+Status          : Succeeded                    ✅
+Events found    : 3                            ✅
+Email sent to   : minj1992@gmail.com           ✅
+Duration        : 313 ms                       ✅
+Memory used     : 92 MB / 256 MB               ✅
+```
+
+Check your inbox for the HTML email first, then let's go to the final categories.
+
+---
+
+# Category 6 — EventBridge Monday Scheduler
+
+## Step 1 — Create Schedule
+
+**Navigate:**
+```
+AWS Console → Amazon EventBridge → Schedules → Create schedule
+```
+
+**Fill exactly:**
+```
+Schedule name       : aws-weekly-report-schedule
+Description         : Triggers weekly report email every Monday 7:30 AM IST
+Group               : default
+```
+
+Click `Next`
+
+---
+
+## Step 2 — Set Schedule Pattern
+
+```
+Occurrence          : Recurring schedule
+Schedule type       : Cron-based schedule
+```
+
+Cron expression — paste exactly:
+```
+0 2 ? * MON *
+```
+
+This means:
+```
+0 2 = 2:00 AM UTC = 7:30 AM IST
+?   = any day of month
+*   = every month
+MON = every Monday
+*   = every year
+```
+
+```
+Flexible time window : Off
+```
+
+Click `Next`
+
+---
+
+## Step 3 — Set Target
+
+```
+Target API          : AWS Lambda  →  Invoke
+Lambda function     : aws-weekly-report-sender
+Payload             : {}
+```
+
+Click `Next`
+
+---
+
+## Step 4 — Settings
+
+```
+Action after schedule completion : NONE
+Retry policy                     : ON
+Maximum age of event             : 1 hour
+Retry attempts                   : 2
+```
+
+**Permissions:**
+```
+Execution role      : Create new role for this schedule
+Role name           : aws-eventbridge-weekly-report-role
+```
+
+Click `Next` → Review → `Create schedule` ✅
+
+---
+
+## Step 5 — Verify Schedule
+
+```
+EventBridge → Schedules → aws-weekly-report-schedule
+```
+
+Confirm:
+```
+Status              : Enabled                  ✅
+Next invocation     : Monday date shown        ✅
+Target              : aws-weekly-report-sender ✅
+```
+
+---
+
+# Category 7 — Final Validation ✅
+
+Once schedule is created, do these final checks:
+
+**Check 1 — Delete the test S3 bucket to capture a delete event:**
+```
+AWS Console → S3 → poc-live-test-bucket-us-east-2 → Delete
+```
+Type bucket name to confirm → Delete
+
+Wait 2 minutes then:
+```
+DynamoDB → aws-resource-events → Explore items → Run
+```
+You should see a new item:
+```
+action      : Deleted
+eventName   : DeleteBucket
+resourceName: poc-live-test-bucket-us-east-2
+```
+
+**Check 2 — Run report again to confirm delete event appears in email:**
+```
+Lambda → aws-weekly-report-sender → Test → invoke
+```
+Check email — should now show both Created and Deleted rows ✅
+
+**Check 3 — CloudWatch logs clean:**
+```
+CloudWatch → Log groups → /aws/lambda/aws-resource-event-processor
+CloudWatch → Log groups → /aws/lambda/aws-weekly-report-sender
+```
+No ERROR lines in latest log stream ✅
+
+---
+
+Once all done, you can update Jira ticket DEV-8:
+
+```
+Comment: POC completed successfully.
+- CloudTrail capturing real AWS events
+- EventBridge routing to Lambda
+- DynamoDB storing all events with TTL
+- Weekly HTML email report working via SES
+- Monday 7:30 AM IST schedule configured
+
+Ready for Terraform/CFT templatization.
+```
+
+Share screenshot of the schedule created and email received — POC is complete! 🎉
