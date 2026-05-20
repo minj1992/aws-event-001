@@ -1,0 +1,42 @@
+// ─── DaySmart Salon — Login Monitor ───────────────────────────────────
+// Monitor type : Scripted browser (User flow / functionality)
+// URL          : https://online.daysmartsalon.com/beta/
+// Credentials  : Stored in Synthetic Monitoring → Secure credentials
+// ──────────────────────────────────────────────────────────────────────
+
+const TIMEOUT = 10000; // 10 seconds max wait per element
+
+// Step 1 — Navigate to the login page
+await $webDriver.get('https://online.daysmartsalon.com/beta/');
+
+// Step 2 — Wait for the Email field and type email
+const emailField = await $webDriver.waitForAndFindElement(
+  $driver.By.css('input[type="email"], input[placeholder*="Email" i]'),
+  TIMEOUT
+);
+await emailField.clear();
+await emailField.sendKeys($secure.DAYSMART_EMAIL);
+
+// Step 3 — Type password
+const pwField = await $webDriver.waitForAndFindElement(
+  $driver.By.css('input[type="password"]'),
+  TIMEOUT
+);
+await pwField.clear();
+await pwField.sendKeys($secure.DAYSMART_PASSWORD);
+
+// Step 4 — Click the Log In button
+await $webDriver.waitForAndFindElement(
+  $driver.By.css('button[type="submit"], button'),
+  TIMEOUT
+).then(btn => btn.click());
+
+// Step 5 — Confirm login succeeded (dashboard must load)
+// ⚠ Replace '.dashboard-container' with a real post-login CSS selector
+await $webDriver.waitForAndFindElement(
+  $driver.By.css('.dashboard-container, [data-testid="dashboard"], nav'),
+  TIMEOUT
+);
+
+$util.insights.set('loginStatus', 'success');
+console.log('✓ DaySmart Salon login monitor completed successfully');
