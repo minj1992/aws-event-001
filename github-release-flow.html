@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub Release Flow — Branching Strategy & Governance</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --bg2: #0f1117;
+    --bg3: #151821;
+    --bg4: #1c2030;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --text2: #8a8fa8;
+    --text3: #555a72;
+    --purple: #7c6ff7;
+    --purple-dim: rgba(124,111,247,0.15);
+    --purple-border: rgba(124,111,247,0.35);
+    --teal: #2dd4a0;
+    --teal-dim: rgba(45,212,160,0.12);
+    --teal-border: rgba(45,212,160,0.3);
+    --amber: #f5a623;
+    --amber-dim: rgba(245,166,35,0.12);
+    --amber-border: rgba(245,166,35,0.3);
+    --coral: #ff6b6b;
+    --coral-dim: rgba(255,107,107,0.12);
+    --coral-border: rgba(255,107,107,0.3);
+    --red-dim: rgba(239,68,68,0.12);
+    --red-border: rgba(239,68,68,0.3);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,111,247,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,111,247,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* ── HEADER ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 48px 0 40px;
+    margin-bottom: 48px;
+  }
+
+  .header-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--purple-dim); border: 1px solid var(--purple-border);
+    color: var(--purple); border-radius: 20px;
+    padding: 4px 12px; font-size: 11px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-size: clamp(28px, 5vw, 48px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -.02em;
+    background: linear-gradient(135deg, #e8eaf0 0%, #7c6ff7 60%, #2dd4a0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+  }
+
+  .header-sub {
+    color: var(--text2);
+    font-size: 15px;
+    max-width: 600px;
+    font-weight: 400;
+  }
+
+  .header-meta {
+    display: flex; gap: 24px; margin-top: 24px; flex-wrap: wrap;
+  }
+
+  .meta-item {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text3); font-family: var(--mono);
+  }
+
+  .meta-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* ── NAV ── */
+  nav {
+    display: flex; gap: 4px; margin-bottom: 40px; flex-wrap: wrap;
+  }
+
+  .nav-btn {
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text2); border-radius: 8px;
+    padding: 8px 16px; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all .2s; font-family: var(--sans);
+    letter-spacing: .03em;
+  }
+
+  .nav-btn:hover, .nav-btn.active {
+    background: var(--purple-dim); border-color: var(--purple-border);
+    color: var(--purple);
+  }
+
+  /* ── SECTIONS ── */
+  .section { display: none; animation: fadeIn .3s ease; }
+  .section.active { display: block; }
+
+  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+  /* ── SECTION HEADER ── */
+  .section-title {
+    font-size: 11px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text3);
+    margin-bottom: 20px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── PIPELINE ── */
+  .pipeline { display: flex; flex-direction: column; gap: 0; }
+
+  .step {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 0;
+    position: relative;
+  }
+
+  .step-connector {
+    position: absolute;
+    left: 28px; top: 100%; width: 2px; height: 28px;
+    background: linear-gradient(to bottom, var(--border2), transparent);
+    z-index: 1;
+  }
+
+  .step-left {
+    padding: 20px 24px 20px 0;
+    border-right: 1px solid var(--border);
+    position: relative;
+  }
+
+  .step-number {
+    position: absolute; top: 22px; right: -12px;
+    width: 24px; height: 24px;
+    background: var(--bg); border: 1px solid var(--border2);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; font-family: var(--mono);
+    color: var(--text3); z-index: 2;
+  }
+
+  .step-number.key { background: var(--purple-dim); border-color: var(--purple-border); color: var(--purple); }
+
+  .step-right { padding: 20px 0 20px 28px; }
+
+  .branch-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 6px;
+    font-family: var(--mono); font-size: 13px; font-weight: 500;
+    margin-bottom: 6px; border: 1px solid;
+  }
+
+  .branch-pill.purple { background: var(--purple-dim); border-color: var(--purple-border); color: var(--purple); }
+  .branch-pill.teal   { background: var(--teal-dim);   border-color: var(--teal-border);   color: var(--teal); }
+  .branch-pill.amber  { background: var(--amber-dim);  border-color: var(--amber-border);  color: var(--amber); }
+  .branch-pill.coral  { background: var(--coral-dim);  border-color: var(--coral-border);  color: var(--coral); }
+
+  .step-desc { font-size: 12px; color: var(--text2); font-weight: 400; }
+
+  .commit-count {
+    display: inline-block; margin-top: 8px;
+    background: var(--bg4); border: 1px solid var(--border);
+    border-radius: 4px; padding: 2px 8px;
+    font-family: var(--mono); font-size: 11px; color: var(--text3);
+  }
+
+  .key-badge {
+    display: inline-block; margin-top: 8px;
+    background: var(--purple-dim); border: 1px solid var(--purple-border);
+    border-radius: 4px; padding: 2px 8px;
+    font-size: 10px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--purple);
+  }
+
+  /* Code block */
+  .code-block {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden;
+  }
+
+  .code-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 14px; border-bottom: 1px solid var(--border);
+    background: var(--bg3);
+  }
+
+  .code-lang {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text3); font-family: var(--mono);
+  }
+
+  .code-dots { display: flex; gap: 5px; }
+  .code-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .code-dot:nth-child(1) { background: #ff5f57; }
+  .code-dot:nth-child(2) { background: #febc2e; }
+  .code-dot:nth-child(3) { background: #28c840; }
+
+  pre {
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.75;
+    overflow-x: auto;
+  }
+
+  .c-comment { color: var(--text3); }
+  .c-cmd { color: var(--teal); }
+  .c-flag { color: var(--amber); }
+  .c-str { color: #e9967a; }
+  .c-branch { color: var(--purple); }
+
+  /* Gov tags in step */
+  .gov-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+
+  .gov-tag {
+    font-size: 11px; padding: 3px 9px; border-radius: 4px;
+    font-weight: 600; border: 1px solid; font-family: var(--mono);
+  }
+
+  .gov-tag.green  { background: rgba(45,212,160,.1); border-color: rgba(45,212,160,.25); color: var(--teal); }
+  .gov-tag.yellow { background: var(--amber-dim); border-color: var(--amber-border); color: var(--amber); }
+  .gov-tag.red    { background: var(--red-dim); border-color: var(--red-border); color: #f87171; }
+  .gov-tag.blue   { background: var(--purple-dim); border-color: var(--purple-border); color: var(--purple); }
+
+  /* Divider between steps */
+  .step-divider {
+    height: 1px; background: var(--border);
+    margin: 0; grid-column: 1 / -1;
+  }
+
+  /* ── CONFLICT SECTION ── */
+  .conflict-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  }
+
+  @media (max-width: 700px) { .conflict-grid { grid-template-columns: 1fr; } }
+
+  .c-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+  }
+
+  .c-card-head {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .c-step-num {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--teal-dim); border: 1px solid var(--teal-border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; font-family: var(--mono); color: var(--teal);
+    flex-shrink: 0;
+  }
+
+  .c-card-title { font-size: 13px; font-weight: 600; }
+  .c-card-sub { font-size: 11px; color: var(--text2); margin-top: 1px; }
+
+  .c-card-body { padding: 12px 16px; }
+
+  .c-note {
+    margin-top: 16px; padding: 12px 16px;
+    background: var(--amber-dim); border: 1px solid var(--amber-border);
+    border-radius: 8px; font-size: 12px; color: var(--amber);
+    grid-column: 1 / -1;
+  }
+
+  /* ── GOVERNANCE ── */
+  .gov-table { width: 100%; border-collapse: collapse; }
+
+  .gov-table th {
+    text-align: left; font-size: 11px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text3); padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg3);
+  }
+
+  .gov-table td {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    font-size: 13px; vertical-align: middle;
+  }
+
+  .gov-table tr:last-child td { border-bottom: none; }
+  .gov-table tr:hover td { background: var(--bg3); }
+
+  .level-badge {
+    display: inline-block; padding: 3px 10px; border-radius: 4px;
+    font-size: 11px; font-weight: 700; font-family: var(--mono);
+    border: 1px solid;
+  }
+
+  .level-badge.critical { background: var(--red-dim); border-color: var(--red-border); color: #f87171; }
+  .level-badge.high     { background: var(--amber-dim); border-color: var(--amber-border); color: var(--amber); }
+  .level-badge.medium   { background: var(--teal-dim); border-color: var(--teal-border); color: var(--teal); }
+  .level-badge.low      { background: var(--bg4); border-color: var(--border2); color: var(--text3); }
+
+  .mono-cell { font-family: var(--mono); font-size: 12px; color: var(--purple); }
+
+  /* CI gates grid */
+  .gates-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px;
+  }
+
+  @media (max-width: 640px) { .gates-grid { grid-template-columns: 1fr 1fr; } }
+
+  .gate-item {
+    background: var(--bg2); border: 1px solid var(--teal-border);
+    border-radius: 8px; padding: 12px 14px;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+
+  .gate-icon {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--teal-dim); border: 1px solid var(--teal-border);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+
+  .gate-icon::after {
+    content: ''; display: block;
+    width: 5px; height: 8px;
+    border-right: 2px solid var(--teal);
+    border-bottom: 2px solid var(--teal);
+    transform: rotate(45deg) translate(-1px, -1px);
+  }
+
+  .gate-text { font-size: 12px; font-weight: 500; }
+  .gate-sub  { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+  /* Policy cards */
+  .policy-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px;
+  }
+
+  @media (max-width: 700px) { .policy-grid { grid-template-columns: 1fr; } }
+
+  .policy-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px;
+  }
+
+  .policy-card.warn { border-color: var(--amber-border); }
+  .policy-card.danger { border-color: var(--red-border); }
+  .policy-card.info { border-color: var(--purple-border); }
+
+  .policy-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+
+  .policy-card.warn  .policy-label { color: var(--amber); }
+  .policy-card.danger .policy-label { color: #f87171; }
+  .policy-card.info  .policy-label { color: var(--purple); }
+
+  .policy-items { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+
+  .policy-items li {
+    font-size: 12px; color: var(--text2); padding-left: 14px; position: relative;
+  }
+
+  .policy-items li::before {
+    content: '—'; position: absolute; left: 0; color: var(--text3);
+  }
+
+  /* Roles */
+  .roles-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;
+  }
+
+  .role-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 16px;
+  }
+
+  .role-name { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .role-approves { font-size: 11px; color: var(--purple); font-family: var(--mono); margin-bottom: 8px; }
+  .role-resp { font-size: 11px; color: var(--text2); line-height: 1.5; }
+
+  /* Sub-heading */
+  .sub-heading {
+    font-size: 11px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text3); margin: 28px 0 12px;
+  }
+
+  /* ── TABLE WRAPPER ── */
+  .table-wrap {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border); padding-top: 24px; margin-top: 60px;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+  }
+
+  .footer-left { font-size: 12px; color: var(--text3); font-family: var(--mono); }
+  .footer-tag {
+    display: inline-block; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 4px; padding: 3px 8px; font-family: var(--mono); font-size: 11px; color: var(--text3);
+  }
+
+  /* Arrow connector visual */
+  .arrow-down {
+    width: 2px; height: 24px; background: var(--border2);
+    margin: 0 auto; position: relative;
+  }
+  .arrow-down::after {
+    content: ''; position: absolute; bottom: -4px; left: -3px;
+    width: 0; height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid var(--border2);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="header-badge">Engineering · Internal</div>
+    <h1>GitHub Release Flow</h1>
+    <p class="header-sub">Branching strategy, commit removal approach, conflict resolution and full governance controls for selective QA-to-Production deployment.</p>
+    <div class="header-meta">
+      <span class="meta-item"><span class="meta-dot" style="background:var(--purple)"></span> Version 1.0</span>
+      <span class="meta-item"><span class="meta-dot" style="background:var(--teal)"></span> Sprint-based releases</span>
+      <span class="meta-item"><span class="meta-dot" style="background:var(--amber)"></span> Mon–Wed commit window</span>
+      <span class="meta-item"><span class="meta-dot" style="background:#555a72"></span> 2025</span>
+    </div>
+  </header>
+
+  <nav>
+    <button class="nav-btn active" onclick="show('pipeline')">Pipeline</button>
+    <button class="nav-btn" onclick="show('conflicts')">Conflict Resolution</button>
+    <button class="nav-btn" onclick="show('governance')">Governance</button>
+    <button class="nav-btn" onclick="show('roles')">Roles</button>
+    <button class="nav-btn" onclick="show('policies')">Policies</button>
+  </nav>
+
+  <!-- ═══════════ PIPELINE ═══════════ -->
+  <section id="pipeline" class="section active">
+    <div class="section-title">Main release pipeline — 10 steps</div>
+    <div class="pipeline">
+
+      <!-- STEP 1 -->
+      <div class="step">
+        <div class="step-left">
+          <div class="step-number">1</div>
+          <div class="branch-pill purple">feature/JIRA-123</div>
+          <div class="step-desc">Developer writes and pushes feature code</div>
+          <div class="commit-count">dev commits</div>
+          <div class="gov-tags">
+            <span class="gov-tag blue">owner: developer</span>
+            <span class="gov-tag green">LOW protection</span>
+          </div>
+        </div>
+        <div class="step-right">
+          <div class="code-block">
+            <div class="code-header"><div class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></div><span class="code-lang">bash</span></div>
+            <pre><span class="c-comment"># create and push feature branch</span>
+<span class="c-cmd">git checkout</span> <span class="c-flag">-b</span> <span class="c-branch">feature/JIRA-123</span>
+<span class="c-cmd">git add</span> .
+<span class="c-cmd">git commit</span> <span class="c-flag">-m</span> <span class="c-str">"feat: add payment module [JIRA-123]"</span>
+<span class="c-cmd">git push</span> origin <span class="c-branch">feature/JIRA-123</span></pre>
+          </div>
+        </div>
+      </div>
+      <div class="step-divider"></div>
+
+      <!-- STEP 2 -->
+      <div class="step">
+        <div class="step-left">
+          <div class="step-number">2</div>
+          <div class="branch-pill purple">sbx</div>
+          <div class="step-desc">Sandbox — merge feature branch in for integration testing</div>
+          <div class="commit-count">~100 commits</div>
+          <div class="gov-tags">
+            <span class="gov-tag green">LOW protection</span>
+            <span class="gov-tag yellow">sandbox only</span>
+          </div>
+        </div>
+        <div class="step-right">
+          <div class="code-block">
+            <div class="code-header"><div class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></div><span class="code-lang">bash</span></div>
+            <pre><span class="c-cmd">git checkout</span> <span class="c-branch">sbx</span>
+<span class="c-cmd">git pull</span> origin <span class="c-branch">sbx</span>
+<span class="c-cmd">git merge</span> <span class="c-branch">feature/JIRA-123</span>
+<span class="c-cmd">git push</span> origin <span class="c-branch">sbx</span></pre>
+          </div>
+        </div>
+      </div>
+      <div class="step-divider"></div>
+
+      <!-- STEP 3 -->
+      <div class="step">
+        <div class="step-left">
+          <div class="step-number">3</div>
+          <div class="branch-pill purple">release/sprint-42</div>
+          <div class="step-desc">Branch off sbx — full commit set, named for sprint</div>
+          <div class="commit-count">100 commits</div>
+          <div class="gov-tags">
+            <span class="gov-tag green">MEDIUM protection</span>
+            <span class="gov-tag blue">PR required</span>
+          </div>
+        </div>
+        <div class="step-right">
+          <div class="code-block">
+            <div class="code-header"><div class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></div><span class="code-lang">bash</span></div>
+            <pre><span class="c-cmd">git checkout</span> <span class="c-branch">sbx</span> <span class="c-flag">&&</span> <span class="c-cmd">git pull</span>
+<span class="c-cmd">git checkout</span> <span class="c-flag">-b</span> <span class="c-branch">release/sprint-42</span>
+<span class="c-cmd">git push</span> origin <span class="c-branch">release/sprint-42</span>
+<span class="c-comment"># naming: release/sprint-{number}</span></pre>
+          </div>
+        </div>
+      </div>
+      <div class="step-divider"></div>
+
+      <!-- STEP 4 KEY -->
+      <div class="step">
+        <div class="step-left">
+          <div class="step-number key">4</div>
+          <div class="branch-pill teal">release/sprint-42</div>
+          <div class="step-desc">Remove 10 unwanted commits directly on the release branch using git revert</div>
+          <div class="commit-count">90 commits (clean)</div>
+          <div class="key-badge">key step</div>
+          <div class="gov-tags">
+            <span class="gov-tag yellow">use git revert only</span>
+            <span class="gov-tag red">never git reset</span>
+          </div>
+        </div>
+        <div class="step-right">
+          <div class="code-block">
+            <div class="code-header"><div class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></div><span class="code-lang">bash</span></div>
+            <pre><span class="c-comment"># identify commits to remove</span>
+<span class="c-cmd">git log</span> <span class="c-flag">--oneline --author=</span><span class="c-str">"dev@company.com"</span>
+<span class="c-comment"># filter by date range (Mon–Wed window)</span>
+<span class="c-cmd">git log</span> <span class="c-flag">--after=</span><span class="c-str">"2025-05-19"</span> <span class="c-flag">--before=</span><span class="c-str">"2025-05-21"</span>
+<span class="c-comment"># revert each unwanted commit</span>
+<span class="c-cmd">git revert</span> <span class="c-str">&lt;commit-sha&gt;</span> <span class="c-flag">--no-commit</span>
+<span class="c-cmd">git revert</span> <span class="c-str">&lt;commit-sha&gt;</span> <span class="c-flag">--no-commit</span>
+<span class="c-cmd">git commit</span> <span class="c-flag">-m</span> <span class="c-str">"revert: remove out-of-scope [JIRA-x,y]"</span>
+<span class="c-cmd">git push</span> origin <span class="c-branch">release/sprint-42</span></pre>
+          </div>
+        </div>
+      </div>
+      <div class="step-divider"></div>
+
+      <!-- STEP 5 -->
+      <div class="step">
+        <div class="step-left">
+          <div class="step-number">5</div>
+          <div class="branch-pill purple">dev</div>
+          <div class="step-desc">Merge clean release branch into dev — auto-deploy to DEV env</div>
+          <div class="commit-count">90 commits</div>
+          <div class="gov-tags">
+            <span class="gov-tag green">MEDIUM protection</span>
+            <span class="gov-tag blue">1 approver: Tech Lead</span>
+          </div>
+        </div>
+        <div class="step-right">
+          <div class="code-block">
+            <div class="code-header"><div class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></div><span class="code-lang">bash</span></div>
+            <pre><span class="c-comment"># raise PR: release → dev</span>
+<span class="c-cmd">gh pr create</span> <span class="c-flag">--base</span> <span class="c-branch">dev</span> <span class="c-flag">--head</span> <span class="c-branch">release/sprint-42</span> \
+  <span class="c-flag">--title</span> <span class="c-str">"Release sprint-42 → dev"</span>
+<span class="c-comment"># after approval, merge</span>
+<span class="c-cmd">gh pr merge</span> <span class="c-str">&lt;pr-number&gt;</span> <span class="c-flag">--merge</span></pre>
+          </div>
+        </div>
+      </div>
+      <div class="step-divider"></div>
+
+      <!-- STEP 6 -->
+      <div class="step">
+        <div class="step-left">
+          <div class="step-number">6</div>
+          <div class="branch-pill purple">qa</div>
+          <div class="step-desc">Full QA validation — sign-off mandatory before any promotion</div>
+          <div class="commit-count">90 commits</div>
+          <div class="gov-tags">
+            <span class="gov-tag yellow">HIGH protection</span>
+            <span class="gov-tag blue">QA sign-off required</span>
+          </div>
+        </div>
+        <div class="step-right">
+          <div class="code-block">
+            <div class="code-header"><div class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></div><span class="code-lang">bash</span></div>
+            <pre><span class="c-cmd">gh pr create</span> <span class="c-flag">--base</span> <span class="c-branch">qa</span> <span class="c-flag">--head</span> <span class="c-branch">dev</span> \
+  <span class="c-flag">--title</span> <span class="c-str">"Promote dev → qa sprint-42"</span>
+<span class="c-comment"># QA engineer validates build on qa environment</span>
+<span class="c-comment"># sign-off recorded as PR comment:</span>
+<span class="c-comment"># "QA approved — JIRA-123, JIRA-124, JIRA-125"</span></pre>
+          </div>
+        </div>
+      </div>
+      <div class="step-divider"></div>
+
+      <!-- STEP 7 KEY -->
+      <div class="step">
+        <div class="step-left">
+          <div class="step-number key">7</div>
+          <div class="branch-pill teal">release_qa/sprint-42</div>
+          <div class="step-desc">Branch from qa, then remove all commits outside dev + Mon–Wed window</div>
+          <div class="commit-count">10 selected commits</div>
+          <div class="key-badge">key step</div>
+          <div class="gov-tags">
+            <span class="gov-tag yellow">HIGH protection</span>
+            <span class="gov-tag blue">Release Manager owns</span>
+          </div>
+        </div>
+        <div class="step-right">
+          <div class="code-block">
+            <div class="code-header"><div class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></div><span class="code-lang">bash</span></div>
+            <pre><span class="c-cmd">git checkout</span> <span class="c-branch">qa</span> <span class="c-flag">&&</span> <span class="c-cmd">git pull</span>
+<span class="c-cmd">git checkout</span> <span class="c-flag">-b</span> <span class="c-branch">release_qa/sprint-42</span>
+<span class="c-comment"># view commits by developer + date range</span>
+<span class="c-cmd">git log</span> <span class="c-flag">--oneline --author=</span><span class="c-str">"dev@co.com"</span> \
+  <span class="c-flag">--after=</span><span class="c-str">"2025-05-19"</span> <span class="c-flag">--before=</span><span class="c-str">"2025-05-21"</span>
+<span class="c-comment"># revert all commits outside this window</span>
+<span class="c-cmd">git revert</span> <span class="c-str">&lt;sha&gt;</span> <span class="c-flag">--no-commit</span>
+<span class="c-cmd">git commit</span> <span class="c-flag">-m</span> <span class="c-str">"revert: scope to sprint window"</span>
+<span class="c-cmd">git push</span> origin <span class="c-branch">release_qa/sprint-42</span></pre>
+          </div>
+        </div>
+      </div>
+      <div class="step-divider"></div>
+
+      <!-- STEP 8 -->
+      <div class="step">
+        <div class="step-left">
+          <div class="step-number">8</div>
+          <div class="branch-pill amber">Conflict check</div>
+          <div class="step-desc">Dry-run merge against master to detect conflicts before raising PR</div>
+          <div class="commit-count">—</div>
+          <div class="gov-tags">
+            <span class="gov-tag yellow">always dry-run first</span>
+            <span class="gov-tag blue">Release Manager</span>
+          </div>
+        </div>
+        <div class="step-right">
+          <div class="code-block">
+            <div class="code-header"><div class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></div><span class="code-lang">bash</span></div>
+            <pre><span class="c-cmd">git checkout</span> <span class="c-branch">master</span> <span class="c-flag">&&</span> <span class="c-cmd">git pull</span>
+<span class="c-comment"># dry-run: detect conflicts without committing</span>
+<span class="c-cmd">git merge</span> <span class="c-flag">--no-commit --no-ff</span> <span class="c-branch">release_qa/sprint-42</span>
+<span class="c-comment"># always abort after check</span>
+<span class="c-cmd">git merge</span> <span class="c-flag">--abort</span>
+<span class="c-comment"># if conflicts found → see Conflict Resolution tab</span>
+<span class="c-comment"># if clean → proceed to Step 9</span></pre>
+          </div>
+        </div>
+      </div>
+      <div class="step-divider"></div>
+
+      <!-- STEP 9 -->
+      <div class="step">
+        <div class="step-left">
+          <div class="step-number">9</div>
+          <div class="branch-pill amber">PR gate → master</div>
+          <div class="step-desc">2 mandatory approvals + all 6 CI/CD gates must pass</div>
+          <div class="commit-count">10 commits staged</div>
+          <div class="gov-tags">
+            <span class="gov-tag red">CRITICAL protection</span>
+            <span class="gov-tag blue">Tech Lead + Release Mgr</span>
+          </div>
+        </div>
+        <div class="step-right">
+          <div class="code-block">
+            <div class="code-header"><div class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></div><span class="code-lang">bash</span></div>
+            <pre><span class="c-cmd">gh pr create</span> <span class="c-flag">--base</span> <span class="c-branch">master</span> \
+  <span class="c-flag">--head</span> <span class="c-branch">release_qa/sprint-42</span> \
+  <span class="c-flag">--title</span> <span class="c-str">"Release sprint-42 → Production"</span>
+<span class="c-comment"># check CI gate status</span>
+<span class="c-cmd">gh pr checks</span> <span class="c-str">&lt;pr-number&gt;</span>
+<span class="c-comment"># merge after 2 approvals + all gates green</span>
+<span class="c-cmd">gh pr merge</span> <span class="c-str">&lt;pr-number&gt;</span> <span class="c-flag">--merge</span></pre>
+          </div>
+        </div>
+      </div>
+      <div class="step-divider"></div>
+
+      <!-- STEP 10 -->
+      <div class="step">
+        <div class="step-left">
+          <div class="step-number">10</div>
+          <div class="branch-pill coral">master — production</div>
+          <div class="step-desc">Merge triggers CI/CD deploy. Smoke tests + Release Manager sign-off</div>
+          <div class="commit-count">10 new commits</div>
+          <div class="gov-tags">
+            <span class="gov-tag red">CRITICAL — no direct push</span>
+            <span class="gov-tag green">retain logs 12 months</span>
+          </div>
+        </div>
+        <div class="step-right">
+          <div class="code-block">
+            <div class="code-header"><div class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></div><span class="code-lang">bash</span></div>
+            <pre><span class="c-comment"># CI/CD pipeline auto-triggers on merge</span>
+<span class="c-comment"># tag the release after successful deploy</span>
+<span class="c-cmd">git tag</span> <span class="c-flag">-a</span> <span class="c-str">v1.42.0</span> <span class="c-flag">-m</span> <span class="c-str">"Sprint 42 production release"</span>
+<span class="c-cmd">git push</span> origin <span class="c-str">v1.42.0</span>
+<span class="c-comment"># post-deploy smoke tests + sign-off in JIRA</span>
+<span class="c-comment"># retain: PR history, logs, sign-offs (12 months)</span></pre>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════ CONFLICT RESOLUTION ═══════════ -->
+  <section id="conflicts" class="section">
+    <div class="section-title">Conflict resolution — triggered when Step 8 dry-run finds conflicts</div>
+    <div class="conflict-grid">
+
+      <div class="c-card">
+        <div class="c-card-head">
+          <div class="c-step-num">1</div>
+          <div><div class="c-card-title">Create release_master</div><div class="c-card-sub">Temporary branch from master</div></div>
+        </div>
+        <div class="c-card-body">
+          <div class="code-block">
+            <div class="code-header"><div class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></div><span class="code-lang">bash</span></div>
+            <pre><span class="c-cmd">git checkout</span> <span class="c-branch">master</span> <span class="c-flag">&&</span> <span class="c-cmd">git pull</span>
+<span class="c-cmd">git checkout</span> <span class="c-flag">-b</span> <span class="c-branch">release_master/sprint-42</span>
+<span class="c-cmd">git push</span> origin <span class="c-branch">release_master/sprint-42</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="c-card">
+        <div class="c-card-head">
+          <div class="c-step-num">2</div>
+          <div><div class="c-card-title">Merge release_qa in</div><div class="c-card-sub">Conflicts surface safely here</div></div>
+        </div>
+        <div class="c-card-body">
+          <div class="code-block">
+            <div class="code-header"><div class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></div><span class="code-lang">bash</span></div>
+            <pre><span class="c-cmd">git merge</span> <span class="c-branch">release_qa/sprint-42</span>
+<span class="c-comment"># conflict markers appear in files</span>
+<span class="c-cmd">git status</span>  <span class="c-comment"># list all conflicted files</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="c-card">
+        <div class="c-card-head">
+          <div class="c-step-num">3</div>
+          <div><div class="c-card-title">Resolve in VS Code</div><div class="c-card-sub">Accept / reject each conflict block</div></div>
+        </div>
+        <div class="c-card-body">
+          <div class="code-block">
+            <div class="code-header"><div class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></div><span class="code-lang">bash</span></div>
+            <pre><span class="c-cmd">code</span> .   <span class="c-comment"># open VS Code</span>
+<span class="c-comment"># resolve all conflict markers</span>
+<span class="c-cmd">git add</span> .
+<span class="c-cmd">git commit</span> <span class="c-flag">-m</span> <span class="c-str">"fix: resolve merge conflicts sprint-42"</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="c-card">
+        <div class="c-card-head">
+          <div class="c-step-num">4</div>
+          <div><div class="c-card-title">Validate merged build</div><div class="c-card-sub">Run tests before PR</div></div>
+        </div>
+        <div class="c-card-body">
+          <div class="code-block">
+            <div class="code-header"><div class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></div><span class="code-lang">bash</span></div>
+            <pre><span class="c-cmd">npm test</span>         <span class="c-comment"># unit + integration</span>
+<span class="c-cmd">npm run lint</span>     <span class="c-comment"># zero critical violations</span>
+<span class="c-cmd">git push</span> origin <span class="c-branch">release_master/sprint-42</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="c-card">
+        <div class="c-card-head">
+          <div class="c-step-num">5</div>
+          <div><div class="c-card-title">Raise PR → master</div><div class="c-card-sub">Tech Lead + Release Manager both required</div></div>
+        </div>
+        <div class="c-card-body">
+          <div class="code-block">
+            <div class="code-header"><div class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></div><span class="code-lang">bash</span></div>
+            <pre><span class="c-cmd">gh pr create</span> <span class="c-flag">--base</span> <span class="c-branch">master</span> \
+  <span class="c-flag">--head</span> <span class="c-branch">release_master/sprint-42</span> \
+  <span class="c-flag">--title</span> <span class="c-str">"Conflict resolution sprint-42"</span>
+<span class="c-cmd">gh pr merge</span> <span class="c-str">&lt;pr-number&gt;</span> <span class="c-flag">--merge</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="c-card">
+        <div class="c-card-head">
+          <div class="c-step-num">6</div>
+          <div><div class="c-card-title">Delete temp branch</div><div class="c-card-sub">release_master is disposable</div></div>
+        </div>
+        <div class="c-card-body">
+          <div class="code-block">
+            <div class="code-header"><div class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></div><span class="code-lang">bash</span></div>
+            <pre><span class="c-cmd">git branch</span> <span class="c-flag">-d</span> <span class="c-branch">release_master/sprint-42</span>
+<span class="c-cmd">git push</span> origin <span class="c-flag">--delete</span> <span class="c-branch">release_master/sprint-42</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="c-note">After merge via conflict resolution, return to <strong>Step 9 (PR gate)</strong> in the main pipeline — the same 2-approval requirement and CI gates still apply to the final merge to master.</div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════ GOVERNANCE ═══════════ -->
+  <section id="governance" class="section">
+    <div class="section-title">Branch protection levels</div>
+    <div class="table-wrap">
+      <table class="gov-table">
+        <thead>
+          <tr>
+            <th>Branch</th>
+            <th>Protection level</th>
+            <th>Rules enforced</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono-cell">master</td>
+            <td><span class="level-badge critical">CRITICAL</span></td>
+            <td>2 approvers required, no force-push, no direct push, all status checks must pass</td>
+          </tr>
+          <tr>
+            <td class="mono-cell">release_qa</td>
+            <td><span class="level-badge high">HIGH</span></td>
+            <td>PR required, 1 approver minimum, status checks must pass before merge</td>
+          </tr>
+          <tr>
+            <td class="mono-cell">qa</td>
+            <td><span class="level-badge high">HIGH</span></td>
+            <td>PR required, QA Engineer sign-off mandatory, recorded in PR comment</td>
+          </tr>
+          <tr>
+            <td class="mono-cell">release</td>
+            <td><span class="level-badge medium">MEDIUM</span></td>
+            <td>PR required, no direct push, Tech Lead review before merge</td>
+          </tr>
+          <tr>
+            <td class="mono-cell">dev</td>
+            <td><span class="level-badge medium">MEDIUM</span></td>
+            <td>PR required, no direct push, unit tests + lint must pass</td>
+          </tr>
+          <tr>
+            <td class="mono-cell">feature/*</td>
+            <td><span class="level-badge low">LOW</span></td>
+            <td>Developer-owned, no restrictions — push freely</td>
+          </tr>
+          <tr>
+            <td class="mono-cell">sbx</td>
+            <td><span class="level-badge low">LOW</span></td>
+            <td>Sandbox environment only — never used in production pipeline</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub-heading">CI/CD gates — all 6 must pass before PR merge unlocks</div>
+    <div class="gates-grid">
+      <div class="gate-item"><div class="gate-icon"></div><div><div class="gate-text">Unit tests</div><div class="gate-sub">Coverage &ge; 80%</div></div></div>
+      <div class="gate-item"><div class="gate-icon"></div><div><div class="gate-text">Integration tests</div><div class="gate-sub">All scenarios pass</div></div></div>
+      <div class="gate-item"><div class="gate-icon"></div><div><div class="gate-text">Static linting</div><div class="gate-sub">Zero critical violations</div></div></div>
+      <div class="gate-item"><div class="gate-icon"></div><div><div class="gate-text">Security scan</div><div class="gate-sub">No HIGH/CRITICAL CVEs</div></div></div>
+      <div class="gate-item"><div class="gate-icon"></div><div><div class="gate-text">Build compiles</div><div class="gate-sub">Clean build required</div></div></div>
+      <div class="gate-item"><div class="gate-icon"></div><div><div class="gate-text">No open conflicts</div><div class="gate-sub">Merge conflict-free</div></div></div>
+    </div>
+  </section>
+
+  <!-- ═══════════ ROLES ═══════════ -->
+  <section id="roles" class="section">
+    <div class="section-title">Roles &amp; approvers</div>
+    <div class="roles-grid">
+      <div class="role-card">
+        <div class="role-name">Developer</div>
+        <div class="role-approves">approves: own feature PRs</div>
+        <div class="role-resp">Writes code, raises PRs, resolves conflicts in own branch. References JIRA ticket in every commit message.</div>
+      </div>
+      <div class="role-card">
+        <div class="role-name">Tech Lead</div>
+        <div class="role-approves">approves: release → dev, PR to master</div>
+        <div class="role-resp">Reviews code quality, reviews revert list before step 4, provides second approval for conflict resolution PRs.</div>
+      </div>
+      <div class="role-card">
+        <div class="role-name">QA Engineer</div>
+        <div class="role-approves">approves: qa branch promotion</div>
+        <div class="role-resp">Validates builds on QA environment. Records sign-off in PR comment with JIRA ticket IDs before any qa merge.</div>
+      </div>
+      <div class="role-card">
+        <div class="role-name">Release Manager</div>
+        <div class="role-approves">approves: final PR to master</div>
+        <div class="role-resp">Owns release schedule, identifies commits to remove on release_qa, dry-runs conflict check, approves go-live.</div>
+      </div>
+      <div class="role-card">
+        <div class="role-name">DevOps Engineer</div>
+        <div class="role-approves">approves: pipeline config only</div>
+        <div class="role-resp">Configures CI/CD pipelines, enforces branch protection rules in GitHub, manages deployment infrastructure.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ POLICIES ═══════════ -->
+  <section id="policies" class="section">
+    <div class="section-title">Compliance &amp; audit policies</div>
+    <div class="policy-grid">
+      <div class="policy-card warn">
+        <div class="policy-label">Change freeze</div>
+        <ul class="policy-items">
+          <li>Last 2 business days of each sprint</li>
+          <li>Public holidays &amp; weekends</li>
+          <li>Active P1/P2 production incidents</li>
+          <li>Scheduled maintenance windows</li>
+          <li>Requires Release Manager override to bypass</li>
+        </ul>
+      </div>
+      <div class="policy-card danger">
+        <div class="policy-label">Hotfix process</div>
+        <ul class="policy-items">
+          <li>Branch directly from master</li>
+          <li>Name: <code style="font-family:var(--mono);font-size:11px">hotfix/&lt;ticket-id&gt;</code></li>
+          <li>Minimal scope — fix only</li>
+          <li>Requires Tech Lead + Release Manager (2 approvals)</li>
+          <li>Back-port to dev and qa immediately after merge</li>
+        </ul>
+      </div>
+      <div class="policy-card info">
+        <div class="policy-label">Audit &amp; traceability</div>
+        <ul class="policy-items">
+          <li>Retain PR history with reviewer names &amp; timestamps (12 months)</li>
+          <li>Commit log for release_qa with author + timestamp</li>
+          <li>CI/CD pipeline run logs per deployment</li>
+          <li>QA sign-off records linked to JIRA tickets</li>
+          <li>Conflict resolution branch history</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sub-heading">Git rules</div>
+    <div class="table-wrap">
+      <table class="gov-table">
+        <thead>
+          <tr><th>Rule</th><th>Reason</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Always use <code style="font-family:var(--mono);font-size:12px;color:var(--teal)">git revert</code> — never <code style="font-family:var(--mono);font-size:12px;color:#f87171">git reset</code> on shared branches</td><td>Revert preserves history; reset rewrites it and breaks other developers' copies</td></tr>
+          <tr><td>Commit selection filter: developer + Monday–Wednesday window + approved only</td><td>Prevents unrelated or untested changes reaching Production</td></tr>
+          <tr><td>Always dry-run merge (<code style="font-family:var(--mono);font-size:12px;color:var(--teal)">--no-commit --no-ff</code>) before raising PR to master</td><td>Detects conflicts before they block the release pipeline</td></tr>
+          <tr><td>Resolve conflicts in isolated <code style="font-family:var(--mono);font-size:12px;color:var(--purple)">release_master</code> branch — never on master directly</td><td>Protects Production branch from unstable state during conflict resolution</td></tr>
+          <tr><td>Tag every production release (<code style="font-family:var(--mono);font-size:12px;color:var(--teal)">git tag -a v{major}.{minor}.{patch}</code>)</td><td>Enables precise rollback and audit trail per release version</td></tr>
+          <tr><td>Delete <code style="font-family:var(--mono);font-size:12px;color:var(--purple)">release_master</code> after merge</td><td>Keeps repository clean; this branch is temporary by design</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-left">GitHub Release Flow v1.0 &nbsp;·&nbsp; Engineering Team &nbsp;·&nbsp; 2025</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <span class="footer-tag">feature → sbx → release → dev → qa → release_qa → master</span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
